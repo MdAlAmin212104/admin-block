@@ -37,6 +37,7 @@ function Extension() {
   const [formErrors, setFormErrors] = useState(null);
   const { title, description } = issue;
   const isEditing = Boolean(issueId);
+  const [loadingRecommended, setLoadingRecommended] = useState(false);
 
   useEffect(() => {
     getIssues(data.selected[0].id).then((issues) => {
@@ -45,6 +46,26 @@ function Extension() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const getIssueRecommendation = useCallback(async () => {
+    // Get a recommended issue title and description from your app's backend
+    setLoadingRecommended(true);
+    // fetch is automatically authenticated and the path is resolved against your app's URL
+    const res = await fetch(
+      `api/recommendedProductIssue?productId=${data.selected[0].id}`,
+    );
+    setLoadingRecommended(false);
+
+    if (!res.ok) {
+      console.error("Network error");
+    }
+    const json = await res.json();
+    console.log({ json });
+    if (json?.productIssue) {
+      // If you get an recommendation, then update the title and description fields
+      setIssue(json?.productIssue);
+    }
+  }, [data.selected]);
 
   useEffect(() => {
     if (issueId) {
@@ -110,9 +131,31 @@ function Extension() {
           ? "Save"
           : "Create"}
       </s-button>
-      <s-button slot="secondary-actions" onClick={close}>
+      <s-button slot="secondary-actions" onClick={() => close()}>
         Cancel
       </s-button>
+
+      {/*Create a banner to let the buyer auto fill the issue with the
+      recommendation from the backend*/}
+
+      <s-stack direction="block">
+        <s-banner>
+          <s-stack direction="block">
+            <s-text>{i18n.translate("issue-generate-banner-text")}</s-text>
+            <s-stack direction="inline">
+              <s-button
+                disabled={loadingRecommended}
+                onClick={getIssueRecommendation}
+              >
+                {i18n.translate("issue-generate-button")}
+              </s-button>
+              {loadingRecommended && <s-spinner />}
+            </s-stack>
+          </s-stack>
+        </s-banner>
+      </s-stack>
+
+
       <s-text-field
         value={title}
         error={

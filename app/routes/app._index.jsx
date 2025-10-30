@@ -1,16 +1,55 @@
+/* eslint-disable react-hooks/rules-of-hooks */
+
 import { useEffect } from "react";
-import { useFetcher } from "react-router";
+import { useFetcher, useLoaderData } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  const { admin } = await authenticate.admin(request);
 
-  return null;
+  const query = `
+  {
+    products(first: 100) {
+      edges {
+        node {
+          title
+          handle
+          metafield(namespace: "$app", key: "issues") {
+            value
+          }
+        }
+      }
+    }
+  }`;
+
+  const response = await admin.graphql(query);
+  const data = await response.json();
+
+  const products = data?.data?.products?.edges || [];
+  const filtered = products.filter(
+    (p) => p.node.metafield && p.node.metafield.value !== null
+  );
+
+  console.log("✅ Total Products with Metafield:", filtered);
+
+  filtered.forEach((product) => {
+  // const title = product.node.title;
+  // const metafieldValue = product.node.metafield?.value || "No metafield";
+  // console.log(`${title} → ${metafieldValue}`);
+  console.log("--------------------------------------------");
+  console.log("this is product ", product.node.metafield.value);
+  console.log("--------------------------------------------");
+});
+
+  return { count: filtered.length };
 };
 
+
 export const action = async ({ request }) => {
+  const data = useLoaderData();
+  console.log("Metafield Count:", data.count);
   const { admin } = await authenticate.admin(request);
   const color = ["Red", "Orange", "Yellow", "Green"][
     Math.floor(Math.random() * 4)

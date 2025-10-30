@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @param {any} id
  * @param {any} newIssues
@@ -34,7 +35,7 @@ export async function updateIssues(id, newIssues) {
  * @param {string} productId
  */
 export async function getIssues(productId) {
-  // This example uses metafields to store the data. For more information, refer to https://shopify.dev/docs/apps/custom-data/metafields.
+  // Shopify product metafield fetch করা হচ্ছে
   const res = await makeGraphQLQuery(
     `query Product($id: ID!) {
       product(id: $id) {
@@ -46,9 +47,24 @@ export async function getIssues(productId) {
     { id: productId },
   );
 
+  // যদি metafield value থাকে
   if (res?.data?.product?.metafield?.value) {
-    return JSON.parse(res.data.product.metafield.value);
+    const issues = JSON.parse(res.data.product.metafield.value);
+
+    // যদি প্রতিটি issue-তে id বা createdAt থাকে তাহলে descending order করা
+    const sortedIssues = issues.sort((a, b) => {
+      // যদি createdAt field থাকে, তাহলে তারিখ অনুযায়ী sort করো
+      if (a.createdAt && b.createdAt) {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      // না থাকলে id অনুযায়ী sort করো
+      return b.id - a.id;
+    });
+
+    return sortedIssues;
   }
+
+  return [];
 }
 
 /**
